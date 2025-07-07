@@ -1,0 +1,111 @@
+:root { 
+    --toast-bg: #333; 
+    --toast-color: white; 
+}
+
+body { 
+    font-family: 'Inter', sans-serif; 
+    background-color: #f8fafc; 
+}
+
+.tab-button.active { 
+    border-color: #4f46e5; 
+    color: #4f46e5; 
+    background-color: #eef2ff; 
+}
+
+.table-container { 
+    width: 100%; 
+    overflow-x: auto; 
+}
+
+table { 
+    width: 100%; 
+    min-width: 1200px; 
+}
+
+th { 
+    background-color: #f1f5f9; 
+}
+
+tbody tr:hover { 
+    background-color: #f9fafb; 
+}
+
+.modal { 
+    display: none; 
+    transition: opacity 0.3s ease; 
+}
+
+.modal.show { 
+    display: flex; 
+}
+
+.status-badge { 
+    padding: 4px 10px; 
+    border-radius: 9999px; 
+    font-weight: 600; 
+    font-size: 0.75rem; 
+    text-transform: uppercase; 
+}
+
+.status-pass { background-color: #dcfce7; color: #166534; }
+.status-fail { background-color: #fee2e2; color: #991b1b; }
+.status-blocked { background-color: #ffedd5; color: #9a3412; }
+
+.priority-high { background-color: #fee2e2; color: #991b1b; }
+.priority-medium { background-color: #fef9c3; color: #854d0e; }
+.priority-low { background-color: #dbeafe; color: #1e40af; }
+
+.toast-container { 
+    position: fixed; 
+    bottom: 20px; 
+    right: 20px; 
+    z-index: 1000; 
+}
+
+.toast { 
+    background-color: var(--toast-bg); 
+    color: var(--toast-color); 
+    padding: 12px 20px; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+    margin-top: 10px; 
+    opacity: 0; 
+    transform: translateY(20px); 
+    transition: all 0.3s ease; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+}
+
+.toast.show { 
+    opacity: 1; 
+    transform: translateY(0); 
+}
+
+.toast.success { --toast-bg: #22c55e; --toast-color: white; }
+.toast.error { --toast-bg: #ef4444; --toast-color: white; }
+
+.user-story-card {
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.user-story-card:hover {
+    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+}
+
+.dragging {
+    opacity: 0.5;
+    background: #eef2ff;
+}
+
+.drag-over {
+    border: 2px dashed #4f46e5;
+    background-color: #f0f2ff;
+}

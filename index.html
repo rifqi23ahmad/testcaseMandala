@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Manajemen Test Case (Versi Pro)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+
+    <div class="max-w-full mx-auto bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Test Case Management Pro</h1>
+                <p class="mt-1 text-gray-500">Platform terpusat untuk manajemen pengujian Anda.</p>
+            </div>
+            <button id="show-export-modal-btn" class="mt-4 sm:mt-0 w-full sm:w-auto flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <i data-feather="download" class="w-5 h-5 mr-2"></i>
+                Export to Excel
+            </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+                <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm active" data-tab="dashboard">Dashboard</button>
+                <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="test-runs">Test Runs</button>
+                <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="test-script">Test Scripts</button>
+                <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="user-story">User Stories</button>
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="tab-content">
+            <!-- Dashboard Content -->
+            <div id="dashboard-content" class="tab-pane">
+                <div id="test-stats" class="mb-6 p-4 border rounded-lg bg-gray-50">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Ringkasan Eksekusi Global</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div class="p-3 bg-white rounded-lg border"><div id="stats-total" class="text-2xl font-bold text-gray-900">0</div><div class="text-sm text-gray-500">Total Eksekusi</div></div>
+                        <div class="p-3 bg-white rounded-lg border"><div id="stats-pass" class="text-2xl font-bold text-green-600">0</div><div class="text-sm text-gray-500">Pass</div></div>
+                        <div class="p-3 bg-white rounded-lg border"><div id="stats-fail" class="text-2xl font-bold text-red-600">0</div><div class="text-sm text-gray-500">Fail</div></div>
+                        <div class="p-3 bg-white rounded-lg border"><div id="stats-blocked" class="text-2xl font-bold text-orange-600">0</div><div class="text-sm text-gray-500">Blocked</div></div>
+                    </div>
+                    <div class="mt-4"><div class="flex justify-between mb-1"><span class="text-base font-medium text-green-700">Pass Rate</span><span id="pass-rate-text" class="text-sm font-medium text-green-700">0%</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="pass-rate-bar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div></div></div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="p-4 border rounded-lg bg-white">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Aktivitas Terbaru</h3>
+                        <ul id="recent-activity-list" class="space-y-4"></ul>
+                    </div>
+                    <div class="p-4 border rounded-lg bg-white">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Test Case Belum Dieksekusi</h3>
+                        <ul id="unexecuted-tests-list" class="space-y-2"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Runs Content -->
+            <div id="test-runs-content" class="tab-pane hidden">
+                 <div class="flex justify-between items-center mb-6">
+                    <input type="text" id="test-runs-search" placeholder="Cari test run..." class="w-1/3 px-3 py-2 border rounded-lg focus:outline-none">
+                    <button id="show-test-run-modal" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"><i data-feather="plus-circle" class="w-5 h-5"></i>Tambah Test Run</button>
+                </div>
+                <div class="table-container border rounded-lg">
+                    <table class="min-w-full divide-y"><thead class="bg-gray-50"><tr><th class="text-left text-xs font-semibold text-gray-600 uppercase">Nama Test Run</th><th class="text-left text-xs font-semibold text-gray-600 uppercase">Progress</th><th class="text-left text-xs font-semibold text-gray-600 uppercase">Actions</th></tr></thead><tbody id="test-runs-table-body" class="bg-white divide-y text-sm"></tbody></table>
+                </div>
+            </div>
+            
+            <!-- Test Run Detail View -->
+            <div id="test-run-detail-content" class="tab-pane hidden">
+                <button id="back-to-test-runs" class="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"><i data-feather="arrow-left" class="w-4 h-4"></i>Kembali ke Test Runs</button>
+                <h2 id="test-run-detail-title" class="text-2xl font-bold text-gray-800 mb-4"></h2>
+                <div id="test-run-detail-stats" class="mb-6"></div>
+                 <div class="flex justify-between items-center mb-6">
+                    <input type="text" id="test-run-detail-search" placeholder="Cari test case..." class="w-1/3 px-3 py-2 border rounded-lg focus:outline-none">
+                    <div class="flex items-center gap-2">
+                        <button data-status="All" class="filter-btn-status bg-indigo-500 text-white px-3 py-1 rounded-full text-sm">All</button>
+                        <button data-status="Untested" class="filter-btn-status bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">Untested</button>
+                        <button data-status="Pass" class="filter-btn-status bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">Pass</button>
+                        <button data-status="Fail" class="filter-btn-status bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">Fail</button>
+                        <button data-status="Blocked" class="filter-btn-status bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">Blocked</button>
+                    </div>
+                </div>
+                <div class="table-container border rounded-lg">
+                    <table class="min-w-full divide-y"><thead class="bg-gray-50"><tr><th class="text-left text-xs font-semibold text-gray-600 uppercase">Status</th><th class="text-left text-xs font-semibold text-gray-600 uppercase">Script ID</th><th class="text-left text-xs font-semibold text-gray-600 uppercase">Test Case</th><th class="text-left text-xs font-semibold text-gray-600 uppercase">Assignee</th><th class="text-left text-xs font-semibold text-gray-600 uppercase">Actions</th></tr></thead><tbody id="test-run-detail-table-body" class="bg-white divide-y text-sm"></tbody></table>
+                </div>
+            </div>
+
+            <!-- User Story Content -->
+            <div id="user-story-content" class="tab-pane hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <input type="text" id="user-story-search" placeholder="Cari user story..." class="w-1/3 px-3 py-2 border rounded-lg focus:outline-none">
+                    <button id="show-user-story-modal" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"><i data-feather="plus-circle" class="w-5 h-5"></i>Tambah User Story</button>
+                </div>
+                <div id="user-story-groups-container" class="space-y-8"></div>
+            </div>
+
+            <!-- Test Script Content -->
+            <div id="test-script-content" class="tab-pane hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <input type="text" id="test-script-search" placeholder="Cari test script..." class="w-1/3 px-3 py-2 border rounded-lg focus:outline-none">
+                    <button id="show-test-script-modal" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"><i data-feather="plus-circle" class="w-5 h-5"></i>Tambah Test Script</button>
+                </div>
+                <div id="test-script-groups-container" class="space-y-8"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- User Story Modal -->
+    <div id="user-story-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center p-4">
+        <div class="relative mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">User Story</h3>
+            <form id="user-story-form" class="space-y-4"><input type="hidden" id="user-story-id"><input class="w-full px-3 py-2 border rounded-lg" type="text" id="us-feature" placeholder="Nama Fitur (e.g., Autentikasi)" required><input class="w-full px-3 py-2 border rounded-lg" type="text" id="us-title" placeholder="Judul User Story" required><input class="w-full px-3 py-2 border rounded-lg" type="text" id="us-as-a" placeholder="Sebagai (peran)..." required><textarea class="w-full px-3 py-2 border rounded-lg" id="us-i-want-to" placeholder="Saya ingin..." required></textarea><textarea class="w-full px-3 py-2 border rounded-lg" id="us-so-that" placeholder="Sehingga saya bisa..." required></textarea><textarea class="w-full px-3 py-2 border rounded-lg" id="us-acceptance-criteria" placeholder="Acceptance Criteria" required></textarea><div class="flex justify-end gap-2 pt-4"><button type="button" class="btn-cancel px-4 py-2 bg-gray-200 rounded-md">Batal</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md">Simpan</button></div></form>
+        </div>
+    </div>
+
+    <!-- Test Script Modal -->
+    <div id="test-script-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center p-4">
+        <div class="relative mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Test Script</h3>
+            <form id="test-script-form" class="space-y-4"><input type="hidden" id="test-script-id-form"><select id="ts-user-story-link" class="w-full px-3 py-2 border rounded-lg"><option value="">Pilih User Story (opsional)</option></select><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input class="w-full px-3 py-2 border rounded-lg" type="text" id="ts-phase" placeholder="Test Phase/Type" required><input class="w-full px-3 py-2 border rounded-lg" type="text" id="ts-script-id" placeholder="Script ID" required></div><input class="w-full px-3 py-2 border rounded-lg" type="text" id="ts-scenario" placeholder="Test Scenario" required><input class="w-full px-3 py-2 border rounded-lg" type="text" id="ts-case" placeholder="Test Case" required><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><select id="ts-priority" class="w-full px-3 py-2 border rounded-lg"><option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option></select><input class="w-full px-3 py-2 border rounded-lg" type="text" id="ts-assignee" placeholder="Assignee (nama)"></div><textarea class="w-full px-3 py-2 border rounded-lg" id="ts-precondition" placeholder="Pre-Condition"></textarea><textarea class="w-full px-3 py-2 border rounded-lg" id="ts-data" placeholder="Test Data"></textarea><div><div class="flex justify-between items-center mb-1"><label class="text-sm font-medium">Pilih Template Test Step</label><button type="button" id="manage-step-templates-btn" class="text-xs text-indigo-600 hover:underline">Kelola Template</button></div><select id="ts-step-template-select" class="w-full px-3 py-2 border rounded-lg"><option value="">-- Pilih Template --</option></select></div><div class="relative"><button type="button" id="generate-with-ai-btn" class="absolute top-2 right-2 flex items-center gap-2 text-xs bg-violet-100 text-violet-700 font-semibold py-1 px-2 rounded-md hover:bg-violet-200"><span id="ai-btn-text">Generate with AI ✨</span><div id="ai-loader" class="loader hidden"></div></button><textarea class="w-full px-3 py-2 border rounded-lg" id="ts-steps" placeholder="Test Steps" required></textarea><button type="button" id="save-steps-as-template-btn" class="absolute bottom-2 right-2 flex items-center gap-2 text-xs bg-blue-100 text-blue-700 font-semibold py-1 px-2 rounded-md hover:bg-blue-200"><i data-feather="save" class="w-3 h-3"></i>Simpan sbg Template</button></div><textarea class="w-full px-3 py-2 border rounded-lg" id="ts-expected" placeholder="Expected Result" required></textarea><div class="flex justify-end gap-2 pt-4"><button type="button" class="btn-cancel px-4 py-2 bg-gray-200 rounded-md">Batal</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md">Simpan</button></div></form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Test Result Modal -->
+    <div id="add-result-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center p-4">
+        <div class="relative mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Update Test Result</h3>
+            <form id="add-result-form" class="space-y-4"><input type="hidden" id="add-result-run-id"><input type="hidden" id="add-result-script-id"><p class="text-sm">Anda mengupdate hasil untuk: <strong id="add-result-case-title" class="font-semibold"></strong></p><select id="add-result-status" class="w-full px-3 py-2 border rounded-lg"><option value="Pass">Pass</option><option value="Fail">Fail</option><option value="Blocked">Blocked</option></select><input class="w-full px-3 py-2 border rounded-lg" type="text" id="add-result-assignee" placeholder="Assignee (nama)"><textarea class="w-full px-3 py-2 border rounded-lg" id="add-result-actual" placeholder="Actual Result" required></textarea><div><label class="block text-sm font-medium mb-1">Evidence (Paste Gambar)</label><div id="evidence-paste-area" class="border-2 border-dashed p-8 text-center cursor-pointer"><span id="evidence-placeholder">Klik dan tempel (Ctrl+V)</span><img id="evidence-preview" class="hidden max-w-full max-h-36 mt-4 mx-auto rounded border"></div><input type="hidden" id="add-result-evidence-data"></div><div><label class="block text-sm font-medium mb-1">Komentar</label><div id="add-result-comments" class="space-y-2 max-h-40 overflow-y-auto p-2 border rounded-lg bg-gray-50"></div><div class="flex mt-2"><input type="text" id="add-result-new-comment" placeholder="Tambah komentar..." class="flex-grow px-3 py-2 border rounded-l-lg"><button type="button" id="add-comment-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-r-lg">Kirim</button></div></div><div class="flex justify-end gap-2 pt-4"><button type="button" class="btn-cancel px-4 py-2 bg-gray-200 rounded-md">Batal</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md">Simpan Hasil</button></div></form>
+        </div>
+    </div>
+
+    <!-- Test Run Modal -->
+    <div id="test-run-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center p-4">
+        <div class="relative mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Buat Test Run Baru</h3>
+            <form id="test-run-form"><input class="w-full px-3 py-2 border rounded-lg mb-4" type="text" id="test-run-name" placeholder="Nama Test Run (e.g., Pengujian Rilis v2.2)" required><div class="max-h-80 overflow-y-auto border rounded-lg p-4"><div id="test-run-scripts-selection" class="space-y-2"></div></div><div class="flex justify-end gap-2 pt-4"><button type="button" class="btn-cancel px-4 py-2 bg-gray-200 rounded-md">Batal</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md">Buat Test Run</button></div></form>
+        </div>
+    </div>
+    
+    <!-- Export Options Modal -->
+    <div id="export-options-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center p-4">
+        <div class="relative mx-auto p-6 border w-full max-w-lg shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Opsi Ekspor</h3>
+            <form id="export-options-form">
+                <p class="mb-4 text-sm text-gray-600">Pilih fitur yang ingin Anda sertakan dalam file Excel.</p>
+                <div class="max-h-64 overflow-y-auto border rounded-lg p-4 space-y-2">
+                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 font-semibold">
+                        <input type="checkbox" id="export-select-all-features" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <span>Pilih Semua Fitur</span>
+                    </label>
+                    <hr>
+                    <div id="export-feature-list" class="space-y-2"></div>
+                </div>
+                <div class="flex justify-end gap-2 pt-4">
+                    <button type="button" class="btn-cancel px-4 py-2 bg-gray-200 rounded-md">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-md">Export</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Step Template Manager Modal -->
+    <div id="step-template-manager-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center p-4">
+        <div class="relative mx-auto p-6 border w-full max-w-xl shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Kelola Template Test Step</h3>
+            <div id="step-template-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
+            <div class="flex justify-end pt-4"><button type="button" class="btn-cancel px-4 py-2 bg-gray-200 rounded-md">Tutup</button></div>
+        </div>
+    </div>
+
+    <!-- Custom Prompt Modal -->
+    <div id="prompt-modal" class="modal fixed inset-0 bg-gray-800 bg-opacity-60 items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm"><h3 id="prompt-title" class="text-lg font-bold"></h3><p id="prompt-message" class="text-gray-600 mt-1 mb-4"></p><input type="text" id="prompt-input" class="w-full px-3 py-2 border rounded-lg"><div class="flex justify-end gap-4 mt-6"><button id="prompt-cancel" class="px-4 py-2 bg-gray-200 rounded-md">Batal</button><button id="prompt-ok" class="px-4 py-2 bg-indigo-600 text-white rounded-md">OK</button></div></div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirm-modal" class="modal fixed inset-0 bg-gray-800 bg-opacity-60 items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm"><h3 class="text-lg font-bold">Konfirmasi</h3><p id="confirm-message" class="text-gray-600 mt-2"></p><div class="flex justify-end gap-4 mt-6"><button id="confirm-cancel" class="px-4 py-2 bg-gray-200 rounded-md">Batal</button><button id="confirm-ok" class="px-4 py-2 bg-red-600 text-white rounded-md">Ya</button></div></div>
+    </div>
+
+    <!-- Image Viewer Modal -->
+    <div id="image-viewer-modal" class="modal fixed inset-0 bg-black bg-opacity-80 items-center justify-center p-4"><img id="full-image-view" src="" class="max-w-full max-h-full"><button id="close-image-viewer" class="absolute top-4 right-4 text-white text-3xl">&times;</button></div>
+
+    <!-- Feather Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <!-- SheetJS (xlsx) for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Custom JS -->
+    <script src="script.js"></script>
+</body>
+</html>
