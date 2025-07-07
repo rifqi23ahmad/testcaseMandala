@@ -18,10 +18,16 @@
                 <h1 class="text-3xl font-bold text-gray-800">Test Case Management Pro</h1>
                 <p class="mt-1 text-gray-500">Platform terpusat untuk manajemen pengujian Anda.</p>
             </div>
-            <button id="show-export-modal-btn" class="mt-4 sm:mt-0 w-full sm:w-auto flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
-                <i data-feather="download" class="w-5 h-5 mr-2"></i>
-                Export to Excel
-            </button>
+            <div class="flex items-center gap-2 mt-4 sm:mt-0">
+                <button id="show-import-modal-btn" class="w-full sm:w-auto flex items-center justify-center bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                    <i data-feather="upload" class="w-5 h-5 mr-2"></i>
+                    Import
+                </button>
+                <button id="show-export-modal-btn" class="w-full sm:w-auto flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                    <i data-feather="download" class="w-5 h-5 mr-2"></i>
+                    Export
+                </button>
+            </div>
         </div>
 
         <!-- Tabs -->
@@ -38,24 +44,17 @@
         <div id="tab-content">
             <!-- Dashboard Content -->
             <div id="dashboard-content" class="tab-pane">
-                <div id="test-stats" class="mb-6 p-4 border rounded-lg bg-gray-50">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Ringkasan Eksekusi Global</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                        <div class="p-3 bg-white rounded-lg border"><div id="stats-total" class="text-2xl font-bold text-gray-900">0</div><div class="text-sm text-gray-500">Total Eksekusi</div></div>
-                        <div class="p-3 bg-white rounded-lg border"><div id="stats-pass" class="text-2xl font-bold text-green-600">0</div><div class="text-sm text-gray-500">Pass</div></div>
-                        <div class="p-3 bg-white rounded-lg border"><div id="stats-fail" class="text-2xl font-bold text-red-600">0</div><div class="text-sm text-gray-500">Fail</div></div>
-                        <div class="p-3 bg-white rounded-lg border"><div id="stats-blocked" class="text-2xl font-bold text-orange-600">0</div><div class="text-sm text-gray-500">Blocked</div></div>
-                    </div>
-                    <div class="mt-4"><div class="flex justify-between mb-1"><span class="text-base font-medium text-green-700">Pass Rate</span><span id="pass-rate-text" class="text-sm font-medium text-green-700">0%</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="pass-rate-bar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div></div></div>
+                <div class="mb-6 flex items-center gap-4">
+                    <label for="dashboard-run-select" class="font-semibold text-gray-700 flex-shrink-0">Tampilkan Progress Untuk:</label>
+                    <select id="dashboard-run-select" class="w-full md:w-1/2 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div id="dashboard-feature-progress" class="lg:col-span-2 space-y-4">
+                        <!-- Feature progress cards will be rendered here -->
+                    </div>
                     <div class="p-4 border rounded-lg bg-white">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">Aktivitas Terbaru</h3>
                         <ul id="recent-activity-list" class="space-y-4"></ul>
-                    </div>
-                    <div class="p-4 border rounded-lg bg-white">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Test Case Belum Dieksekusi</h3>
-                        <ul id="unexecuted-tests-list" class="space-y-2"></ul>
                     </div>
                 </div>
             </div>
@@ -163,6 +162,31 @@
                 <div class="flex justify-end gap-2 pt-4">
                     <button type="button" class="btn-cancel px-4 py-2 bg-gray-200 rounded-md">Batal</button>
                     <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-md">Export</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="import-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full items-center justify-center p-4">
+        <div class="relative mx-auto p-6 border w-full max-w-lg shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Impor Test Script</h3>
+            <form id="import-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="import-file-input" class="block text-sm font-medium text-gray-700">Pilih File (.xlsx, .csv)</label>
+                        <input type="file" id="import-file-input" accept=".xlsx, .csv" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" required>
+                    </div>
+                    <div>
+                        <label for="import-feature-select" class="block text-sm font-medium text-gray-700">Impor ke Fitur Tujuan</label>
+                        <select id="import-feature-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" required>
+                            <option value="">-- Pilih Fitur --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-6">
+                    <button type="button" class="btn-cancel px-4 py-2 bg-gray-200 rounded-md">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-sky-600 text-white rounded-md">Impor</button>
                 </div>
             </form>
         </div>

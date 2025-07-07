@@ -11,11 +11,12 @@
         recentActivities: [],
         activeTab: 'dashboard',
         activeTestRunId: null,
+        dashboardSelectedRunId: null,
         activeTestRunFilter: 'All'
     };
 
     // --- LOCAL STORAGE & DEFAULTS ---
-    const APP_VERSION = 'v12'; // Updated version
+    const APP_VERSION = 'v13'; // Updated version
     const defaultData = {
         userStories: [
             { id: 1, feature: 'Autentikasi', title: '#2110 Menu Login', asA: 'Pengguna', iWantTo: 'Masuk ke dalam sistem.', soThat: 'Saya bisa mengakses fitur-fitur.', acceptanceCriteria: '1. Pengguna bisa login dengan email dan password valid.\n2. Muncul pesan error jika login gagal.' },
@@ -41,6 +42,7 @@
         } else {
             state = defaultData;
         }
+        state.dashboardSelectedRunId = state.dashboardSelectedRunId || (state.testRuns.length > 0 ? state.testRuns[state.testRuns.length - 1].id : null);
     }
 
     // --- UTILITY & HELPER FUNCTIONS ---
@@ -137,19 +139,61 @@
     }
     
     function renderDashboard() {
-        const allResults = state.testRuns.flatMap(run => run.results || []);
-        const total = allResults.length;
-        const passed = allResults.filter(r => r.status === 'Pass').length;
-        const failed = allResults.filter(r => r.status === 'Fail').length;
-        const blocked = allResults.filter(r => r.status === 'Blocked').length;
-        const rate = total > 0 ? (passed / total) * 100 : 0;
+        const runSelector = $('#dashboard-run-select');
+        runSelector.innerHTML = state.testRuns.map(run => `<option value="${run.id}">${run.name}</option>`).join('');
+        if (state.dashboardSelectedRunId) {
+            runSelector.value = state.dashboardSelectedRunId;
+        }
 
-        $('#stats-total').textContent = total;
-        $('#stats-pass').textContent = passed;
-        $('#stats-fail').textContent = failed;
-        $('#stats-blocked').textContent = blocked;
-        $('#pass-rate-text').textContent = `${rate.toFixed(1)}%`;
-        $('#pass-rate-bar').style.width = `${rate}%`;
+        const progressContainer = $('#dashboard-feature-progress');
+        const selectedRun = state.testRuns.find(run => run.id == state.dashboardSelectedRunId);
+
+        if (!selectedRun) {
+            progressContainer.innerHTML = `<div class="text-center text-gray-500 p-8 border rounded-lg">Pilih Test Run untuk melihat progress, atau buat Test Run baru.</div>`;
+            $('#recent-activity-list').innerHTML = '<li class="text-sm text-gray-400">Belum ada aktivitas.</li>';
+            return;
+        }
+
+        const scriptsInRun = selectedRun.scriptIds.map(id => state.testScripts.find(ts => ts.id == id)).filter(Boolean);
+        const groups = scriptsInRun.reduce((acc, script) => {
+            const us = state.userStories.find(u => u.id == script.userStoryId);
+            const feature = us ? us.feature : 'Tanpa Fitur';
+            if (!acc[feature]) acc[feature] = [];
+            acc[feature].push(script);
+            return acc;
+        }, {});
+
+        progressContainer.innerHTML = Object.keys(groups).sort().map(feature => {
+            const featureScripts = groups[feature];
+            const total = featureScripts.length;
+            const results = (selectedRun.results || []);
+            const passed = featureScripts.filter(ts => results.find(r => r.scriptId == ts.id)?.status === 'Pass').length;
+            const failed = featureScripts.filter(ts => results.find(r => r.scriptId == ts.id)?.status === 'Fail').length;
+            const blocked = featureScripts.filter(ts => results.find(r => r.scriptId == ts.id)?.status === 'Blocked').length;
+            const executed = passed + failed + blocked;
+            const passRate = total > 0 ? (passed / total) * 100 : 0;
+
+            return `
+                <div class="p-4 border rounded-lg bg-white">
+                    <h4 class="font-bold text-gray-800">${feature}</h4>
+                    <div class="mt-2">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-base font-medium text-green-700">Pass Rate</span>
+                            <span class="text-sm font-medium text-green-700">${passRate.toFixed(1)}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="bg-green-600 h-2.5 rounded-full" style="width: ${passRate}%"></div>
+                        </div>
+                    </div>
+                    <div class="mt-4 grid grid-cols-4 gap-2 text-center text-xs">
+                        <div title="Pass"><i data-feather="check-circle" class="w-4 h-4 mx-auto text-green-500"></i> ${passed}</div>
+                        <div title="Fail"><i data-feather="x-circle" class="w-4 h-4 mx-auto text-red-500"></i> ${failed}</div>
+                        <div title="Blocked"><i data-feather="slash" class="w-4 h-4 mx-auto text-orange-500"></i> ${blocked}</div>
+                        <div title="Untested"><i data-feather="circle" class="w-4 h-4 mx-auto text-gray-400"></i> ${total - executed}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
 
         $('#recent-activity-list').innerHTML = state.recentActivities.map(act => `
             <li class="flex items-start gap-3">
@@ -160,18 +204,6 @@
                 </div>
             </li>
         `).join('') || '<li class="text-sm text-gray-400">Belum ada aktivitas.</li>';
-
-        const executedScriptIds = new Set(state.testRuns.flatMap(run => (run.results || []).map(r => r.scriptId)));
-        const unexecutedTests = state.testScripts.filter(ts => !executedScriptIds.has(ts.id));
-        $('#unexecuted-tests-list').innerHTML = unexecutedTests.map(ts => `
-            <li class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100">
-                <div>
-                    <p class="font-semibold text-sm text-gray-800">${ts.scriptId}</p>
-                    <p class="text-xs text-gray-500">${ts.testCase}</p>
-                </div>
-                <span class="status-badge priority-${ts.priority.toLowerCase()}">${ts.priority}</span>
-            </li>
-        `).join('') || '<li class="text-sm text-gray-400">Semua test case sudah dieksekusi.</li>';
     }
     
     function renderUserStories(searchTerm = '') {
@@ -282,20 +314,6 @@
         state.activeTestRunId = runId;
         state.activeTestRunFilter = statusFilter;
         $('#test-run-detail-title').textContent = run.name;
-        
-        const totalInRun = run.scriptIds.length;
-        const passedInRun = (run.results || []).filter(r => r.status === 'Pass').length;
-        const rate = totalInRun > 0 ? (passedInRun / totalInRun) * 100 : 0;
-        
-        $('#test-run-detail-stats').innerHTML = `
-            <div class="flex justify-between mb-1">
-                <span class="text-base font-medium text-green-700">Pass Rate</span>
-                <span class="text-sm font-medium text-green-700">${rate.toFixed(1)}%</span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2.5">
-                <div class="bg-green-600 h-2.5 rounded-full" style="width: ${rate}%"></div>
-            </div>`;
-
 
         $$('#test-run-detail-content .filter-btn-status').forEach(btn => {
             btn.classList.toggle('bg-indigo-500', btn.dataset.status === statusFilter);
@@ -360,6 +378,8 @@
         $('#test-run-form').addEventListener('submit', handleTestRunSubmit);
         $('#add-result-form').addEventListener('submit', handleAddResultSubmit);
         $('#export-options-form').addEventListener('submit', handleSelectiveExport);
+        $('#import-form').addEventListener('submit', handleImport);
+
 
         $('#evidence-paste-area').addEventListener('paste', handleEvidencePaste);
         setupDragAndDrop();
@@ -740,6 +760,14 @@
             `).join('');
             openModal('export-options-modal');
         });
+
+        $('#show-import-modal-btn').addEventListener('click', () => {
+            const featureSelect = $('#import-feature-select');
+            const uniqueFeatures = [...new Set(state.userStories.map(us => us.feature || 'Tanpa Fitur'))];
+            featureSelect.innerHTML = '<option value="">-- Pilih Fitur --</option>';
+            featureSelect.innerHTML += uniqueFeatures.map(f => `<option value="${f}">${f}</option>`).join('');
+            openModal('import-modal');
+        });
         
         $('#export-select-all-features').addEventListener('change', (e) => {
             $$('input[name="export-feature"]').forEach(cb => cb.checked = e.target.checked);
@@ -750,6 +778,11 @@
                 const feature = e.target.dataset.feature;
                 $$(`input[name="test-run-script"][data-feature="${feature}"]`).forEach(cb => cb.checked = e.target.checked);
             }
+        });
+
+        $('#dashboard-run-select').addEventListener('change', (e) => {
+            state.dashboardSelectedRunId = e.target.value;
+            renderAll();
         });
     }
 
@@ -778,6 +811,77 @@
         XLSX.writeFile(wb, `TestCase_Export_${selectedFeatures.join('_')}.xlsx`);
         showToast('Data berhasil diekspor ke Excel.');
         closeModal('export-options-modal');
+    }
+
+    function handleImport(e) {
+        e.preventDefault();
+        const file = $('#import-file-input').files[0];
+        const targetFeatureName = $('#import-feature-select').value;
+
+        if (!file || !targetFeatureName) {
+            showToast('Mohon pilih file dan fitur tujuan.', 'error');
+            return;
+        }
+
+        const targetUserStory = state.userStories.find(us => us.feature === targetFeatureName);
+        if (!targetUserStory) {
+            showToast('Fitur tujuan tidak valid atau tidak memiliki User Story.', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+
+                let importedCount = 0;
+                let skippedCount = 0;
+
+                json.forEach(row => {
+                    const scriptId = row['Script ID (TS-xxxx)'] || row['Script ID'];
+                    if (!scriptId || !row['Test Case']) {
+                        skippedCount++;
+                        return;
+                    }
+
+                    if (state.testScripts.some(ts => ts.scriptId === scriptId)) {
+                        skippedCount++;
+                        return;
+                    }
+
+                    const newScript = {
+                        id: Date.now() + importedCount,
+                        userStoryId: targetUserStory.id,
+                        scriptId: scriptId,
+                        testCase: row['Test Case'] || '',
+                        scenario: row['Test Scenario'] || '',
+                        phase: row['Test Phase/ Type'] || 'System Testing',
+                        precondition: row['Pre-Condition'] || '',
+                        testData: row['Test Data'] || '',
+                        steps: row['Test Steps'] || '',
+                        expected: row['Expected Result'] || '',
+                        priority: 'Medium',
+                        assignee: ''
+                    };
+                    state.testScripts.push(newScript);
+                    importedCount++;
+                });
+
+                addActivity(`${importedCount} test script diimpor ke fitur ${targetFeatureName}.`, 'create');
+                renderAll();
+                closeModal('import-modal');
+                showToast(`Impor Selesai: ${importedCount} berhasil, ${skippedCount} dilewati.`);
+
+            } catch (error) {
+                showToast('Gagal memproses file. Pastikan format benar.', 'error');
+                console.error("Import error:", error);
+            }
+        };
+        reader.readAsArrayBuffer(file);
     }
 
     // --- INITIALIZATION ---
