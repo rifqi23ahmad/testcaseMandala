@@ -16,7 +16,7 @@
     };
 
     // --- LOCAL STORAGE & DEFAULTS ---
-    const APP_VERSION = 'v13'; // Updated version
+    const APP_VERSION = 'v15'; // Updated version
     const defaultData = {
         userStories: [
             { id: 1, feature: 'Autentikasi', title: '#2110 Menu Login', asA: 'Pengguna', iWantTo: 'Masuk ke dalam sistem.', soThat: 'Saya bisa mengakses fitur-fitur.', acceptanceCriteria: '1. Pengguna bisa login dengan email dan password valid.\n2. Muncul pesan error jika login gagal.' },
@@ -68,7 +68,7 @@
             toast.classList.add('show');
             setTimeout(() => {
                 toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
+                setTimeout(() => toast.remove(), 3000);
             }, 3000);
         }, 10);
     }
@@ -786,6 +786,7 @@
         });
     }
 
+    // FIXED EXPORT FUNCTION - Sesuai dengan format gambar yang diberikan
     function handleSelectiveExport(e) {
         e.preventDefault();
         const selectedFeatures = Array.from($$('input[name="export-feature"]:checked')).map(cb => cb.value);
@@ -800,13 +801,18 @@
 
         const wb = XLSX.utils.book_new();
         
-        const wsUserStory = XLSX.utils.json_to_sheet(filteredUserStories.map(({ id, ...rest }) => ({
-            Feature: rest.feature, Title: rest.title, 'As a': rest.asA, 'I want to': rest.iWantTo, 'So that': rest.soThat, 'Acceptance Criteria': rest.acceptanceCriteria
+        // Export Test Scripts dengan format yang sesuai dengan gambar
+        const wsTestScript = XLSX.utils.json_to_sheet(filteredTestScripts.map(ts => ({
+            'Test Phase/ Type': ts.phase || 'System Testing',
+            'Script ID (TS- 2219)': ts.scriptId,
+            'Test Scenario': ts.scenario,
+            'Test Case': ts.testCase,
+            'Pre-Condition': ts.precondition,
+            'Test Data': ts.testData,
+            'Test Steps': ts.steps,
+            'Expected Result': ts.expected
         })));
-        XLSX.utils.book_append_sheet(wb, wsUserStory, 'User Story');
-
-        const wsTestScript = XLSX.utils.json_to_sheet(filteredTestScripts.map(({ id, userStoryId, priority, assignee, ...rest }) => rest));
-        XLSX.utils.book_append_sheet(wb, wsTestScript, 'Test Script');
+        XLSX.utils.book_append_sheet(wb, wsTestScript, 'TEST SCRIPT');
         
         XLSX.writeFile(wb, `TestCase_Export_${selectedFeatures.join('_')}.xlsx`);
         showToast('Data berhasil diekspor ke Excel.');
@@ -816,16 +822,9 @@
     function handleImport(e) {
         e.preventDefault();
         const file = $('#import-file-input').files[0];
-        const targetFeatureName = $('#import-feature-select').value;
-
-        if (!file || !targetFeatureName) {
-            showToast('Mohon pilih file dan fitur tujuan.', 'error');
-            return;
-        }
-
-        const targetUserStory = state.userStories.find(us => us.feature === targetFeatureName);
-        if (!targetUserStory) {
-            showToast('Fitur tujuan tidak valid atau tidak memiliki User Story.', 'error');
+        
+        if (!file) {
+            showToast('Mohon pilih file terlebih dahulu.', 'error');
             return;
         }
 
@@ -834,44 +833,136 @@
             try {
                 const data = new Uint8Array(event.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet);
+                
+                // Import User Stories
+                const usSheetName = workbook.SheetNames.find(name => name.toLowerCase().includes('user story'));
+                if (usSheetName) {
+                    const usWorksheet = workbook.Sheets[usSheetName];
+                    const usJson = XLSX.utils.sheet_to_json(usWorksheet);
+                    usJson.forEach(row => {
+                        // Check for 'Title' or 'Story' for user story title
+                        const usTitle = row.Title || row.Story || '';
+                        if (usTitle && !state.userStories.some(us => us.title === usTitle)) {
+                            state.userStories.push({
+                                id: row.ID || (Date.now() + Math.random()), // Use ID from Excel if available
+                                feature: row.Feature || 'Lainnya',
+                                title: usTitle,
+                                asA: row['As a'] || row['As A'] || '',
+                                iWantTo: row['I want to'] || row['I Want To'] || '',
+                                soThat: row['So that'] || row['So That'] || '',
+                                acceptanceCriteria: row['Acceptance Criteria'] || row['AcceptanceCriteria'] || ''
+                            });
+                        }
+                    });
+                }
+
+                // Import Test Scripts
+                const tsSheetName = workbook.SheetNames.find(name => name.toLowerCase().includes('test script'));
+                if (!tsSheetName) {
+                    showToast('Sheet "Test Script" tidak ditemukan di dalam file.', 'error');
+                    return;
+                }
+
+                const worksheet = workbook.Sheets[tsSheetName];
+                // Use header: 1 to get an array of arrays, where the first array is the header
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+                let headerRowIndex = -1;
+                let headers = [];
+
+                // Find the header row based on common column names
+                for (let i = 0; i < json.length; i++) {
+                    const row = json[i].map(cell => String(cell).toLowerCase().trim());
+                    // Look for key indicators of a header row
+                    const hasScriptId = row.some(cell => cell.includes('script id') || cell.includes('scriptid'));
+                    const hasTestCase = row.some(cell => cell.includes('test case') || cell.includes('testcase'));
+                    const hasSteps = row.some(cell => cell.includes('steps') || cell.includes('test steps'));
+                    const hasExpected = row.some(cell => cell.includes('expected') || cell.includes('expected result'));
+
+                    if (hasScriptId && hasTestCase && hasSteps && hasExpected) {
+                        headerRowIndex = i;
+                        headers = json[i].map(cell => String(cell).trim());
+                        break;
+                    }
+                }
+
+                if (headerRowIndex === -1) {
+                    showToast('Header table (Script ID, Test Case, Steps, Expected Result) tidak ditemukan di sheet.', 'error');
+                    return;
+                }
+                
+                const findKeyIndex = (searchTerms) => {
+                    for (const term of searchTerms) {
+                        const index = headers.findIndex(h => h.toLowerCase().replace(/\s+/g, ' ').includes(term));
+                        if (index !== -1) return index;
+                    }
+                    return -1;
+                };
+
+                const idIndex = findKeyIndex(['id']); // Added ID index
+                const userStoryIdIndex = findKeyIndex(['userstoryid', 'user story id']); // Added UserStoryID index
+                const scriptIdIndex = findKeyIndex(['script id', 'scriptid', 'script']);
+                const testCaseIndex = findKeyIndex(['test case', 'testcase', 'case']);
+                const scenarioIndex = findKeyIndex(['test scenario', 'scenario']);
+                const phaseIndex = findKeyIndex(['test phase/ type', 'test phase', 'phase', 'type']);
+                const preconditionIndex = findKeyIndex(['pre-condition', 'precondition']);
+                const testDataIndex = findKeyIndex(['test data', 'testdata', 'data']);
+                const stepsIndex = findKeyIndex(['test steps', 'steps']);
+                const expectedIndex = findKeyIndex(['expected result', 'expected', 'expected outcome']);
+                const featureIndex = findKeyIndex(['feature']); // Find feature column
+                const priorityIndex = findKeyIndex(['priority']);
+                const assigneeIndex = findKeyIndex(['assignee']);
 
                 let importedCount = 0;
                 let skippedCount = 0;
 
-                json.forEach(row => {
-                    const scriptId = row['Script ID (TS-xxxx)'] || row['Script ID'];
-                    if (!scriptId || !row['Test Case']) {
-                        skippedCount++;
-                        return;
+                for (let i = headerRowIndex + 1; i < json.length; i++) {
+                    const row = json[i];
+                    const scriptId = row[scriptIdIndex];
+                    
+                    if (!scriptId || String(scriptId).trim() === '') {
+                        continue; 
                     }
 
-                    if (state.testScripts.some(ts => ts.scriptId === scriptId)) {
+                    // Skip if scriptId already exists
+                    if (state.testScripts.some(ts => ts.scriptId === String(scriptId))) {
                         skippedCount++;
-                        return;
+                        continue;
+                    }
+                    
+                    const featureName = row[featureIndex] || 'Tanpa Fitur';
+                    let targetUserStory = state.userStories.find(us => us.feature === featureName);
+
+                    // If feature doesn't exist, create a placeholder User Story for it
+                    if (!targetUserStory) {
+                        targetUserStory = {
+                            id: Date.now() + Math.random(),
+                            feature: featureName,
+                            title: `User Story untuk ${featureName}`,
+                            asA: '', iWantTo: '', soThat: '', acceptanceCriteria: ''
+                        };
+                        state.userStories.push(targetUserStory);
                     }
 
                     const newScript = {
-                        id: Date.now() + importedCount,
-                        userStoryId: targetUserStory.id,
-                        scriptId: scriptId,
-                        testCase: row['Test Case'] || '',
-                        scenario: row['Test Scenario'] || '',
-                        phase: row['Test Phase/ Type'] || 'System Testing',
-                        precondition: row['Pre-Condition'] || '',
-                        testData: row['Test Data'] || '',
-                        steps: row['Test Steps'] || '',
-                        expected: row['Expected Result'] || '',
-                        priority: 'Medium',
-                        assignee: ''
+                        id: row[idIndex] || (Date.now() + importedCount), // Use ID from Excel if available
+                        userStoryId: row[userStoryIdIndex] || targetUserStory.id, // Use UserStoryID from Excel if available
+                        scriptId: String(scriptId),
+                        testCase: row[testCaseIndex] || '',
+                        scenario: row[scenarioIndex] || '',
+                        phase: row[phaseIndex] || 'System Testing',
+                        precondition: row[preconditionIndex] || '',
+                        testData: row[testDataIndex] || '',
+                        steps: row[stepsIndex] || '',
+                        expected: row[expectedIndex] || '',
+                        priority: row[priorityIndex] || 'Medium',
+                        assignee: row[assigneeIndex] || ''
                     };
                     state.testScripts.push(newScript);
                     importedCount++;
-                });
+                }
 
-                addActivity(`${importedCount} test script diimpor ke fitur ${targetFeatureName}.`, 'create');
+                addActivity(`${importedCount} test script diimpor.`, 'create');
                 renderAll();
                 closeModal('import-modal');
                 showToast(`Impor Selesai: ${importedCount} berhasil, ${skippedCount} dilewati.`);
@@ -888,3 +979,4 @@
     init();
 
 })();
+
