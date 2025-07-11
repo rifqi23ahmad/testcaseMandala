@@ -822,9 +822,15 @@
     function handleImport(e) {
         e.preventDefault();
         const file = $('#import-file-input').files[0];
+        const selectedFeatureName = $('#import-feature-select').value; // Get selected feature
         
         if (!file) {
             showToast('Mohon pilih file terlebih dahulu.', 'error');
+            return;
+        }
+
+        if (!selectedFeatureName) {
+            showToast('Mohon pilih fitur tujuan terlebih dahulu.', 'error');
             return;
         }
 
@@ -834,29 +840,20 @@
                 const data = new Uint8Array(event.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
                 
-                // Import User Stories
-                const usSheetName = workbook.SheetNames.find(name => name.toLowerCase().includes('user story'));
-                if (usSheetName) {
-                    const usWorksheet = workbook.Sheets[usSheetName];
-                    const usJson = XLSX.utils.sheet_to_json(usWorksheet);
-                    usJson.forEach(row => {
-                        // Check for 'Title' or 'Story' for user story title
-                        const usTitle = row.Title || row.Story || '';
-                        if (usTitle && !state.userStories.some(us => us.title === usTitle)) {
-                            state.userStories.push({
-                                id: row.ID || (Date.now() + Math.random()), // Use ID from Excel if available
-                                feature: row.Feature || 'Lainnya',
-                                title: usTitle,
-                                asA: row['As a'] || row['As A'] || '',
-                                iWantTo: row['I want to'] || row['I Want To'] || '',
-                                soThat: row['So that'] || row['So That'] || '',
-                                acceptanceCriteria: row['Acceptance Criteria'] || row['AcceptanceCriteria'] || ''
-                            });
-                        }
-                    });
+                // Find target User Story based on selected feature
+                let targetUserStory = state.userStories.find(us => us.feature === selectedFeatureName);
+
+                // If feature doesn't exist, create a placeholder User Story for it
+                if (!targetUserStory) {
+                    targetUserStory = {
+                        id: Date.now() + Math.random(),
+                        feature: selectedFeatureName,
+                        title: `User Story untuk ${selectedFeatureName}`,
+                        asA: '', iWantTo: '', soThat: '', acceptanceCriteria: ''
+                    };
+                    state.userStories.push(targetUserStory);
                 }
 
-                // Import Test Scripts
                 const tsSheetName = workbook.SheetNames.find(name => name.toLowerCase().includes('test script'));
                 if (!tsSheetName) {
                     showToast('Sheet "Test Script" tidak ditemukan di dalam file.', 'error');
@@ -864,16 +861,13 @@
                 }
 
                 const worksheet = workbook.Sheets[tsSheetName];
-                // Use header: 1 to get an array of arrays, where the first array is the header
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
                 let headerRowIndex = -1;
                 let headers = [];
 
-                // Find the header row based on common column names
                 for (let i = 0; i < json.length; i++) {
                     const row = json[i].map(cell => String(cell).toLowerCase().trim());
-                    // Look for key indicators of a header row
                     const hasScriptId = row.some(cell => cell.includes('script id') || cell.includes('scriptid'));
                     const hasTestCase = row.some(cell => cell.includes('test case') || cell.includes('testcase'));
                     const hasSteps = row.some(cell => cell.includes('steps') || cell.includes('test steps'));
@@ -899,8 +893,6 @@
                     return -1;
                 };
 
-                const idIndex = findKeyIndex(['id']); // Added ID index
-                const userStoryIdIndex = findKeyIndex(['userstoryid', 'user story id']); // Added UserStoryID index
                 const scriptIdIndex = findKeyIndex(['script id', 'scriptid', 'script']);
                 const testCaseIndex = findKeyIndex(['test case', 'testcase', 'case']);
                 const scenarioIndex = findKeyIndex(['test scenario', 'scenario']);
@@ -909,7 +901,6 @@
                 const testDataIndex = findKeyIndex(['test data', 'testdata', 'data']);
                 const stepsIndex = findKeyIndex(['test steps', 'steps']);
                 const expectedIndex = findKeyIndex(['expected result', 'expected', 'expected outcome']);
-                const featureIndex = findKeyIndex(['feature']); // Find feature column
                 const priorityIndex = findKeyIndex(['priority']);
                 const assigneeIndex = findKeyIndex(['assignee']);
 
@@ -924,29 +915,14 @@
                         continue; 
                     }
 
-                    // Skip if scriptId already exists
                     if (state.testScripts.some(ts => ts.scriptId === String(scriptId))) {
                         skippedCount++;
                         continue;
                     }
-                    
-                    const featureName = row[featureIndex] || 'Tanpa Fitur';
-                    let targetUserStory = state.userStories.find(us => us.feature === featureName);
-
-                    // If feature doesn't exist, create a placeholder User Story for it
-                    if (!targetUserStory) {
-                        targetUserStory = {
-                            id: Date.now() + Math.random(),
-                            feature: featureName,
-                            title: `User Story untuk ${featureName}`,
-                            asA: '', iWantTo: '', soThat: '', acceptanceCriteria: ''
-                        };
-                        state.userStories.push(targetUserStory);
-                    }
 
                     const newScript = {
-                        id: row[idIndex] || (Date.now() + importedCount), // Use ID from Excel if available
-                        userStoryId: row[userStoryIdIndex] || targetUserStory.id, // Use UserStoryID from Excel if available
+                        id: (Date.now() + importedCount),
+                        userStoryId: targetUserStory.id, // Assign to the selected feature's user story
                         scriptId: String(scriptId),
                         testCase: row[testCaseIndex] || '',
                         scenario: row[scenarioIndex] || '',
@@ -962,7 +938,7 @@
                     importedCount++;
                 }
 
-                addActivity(`${importedCount} test script diimpor.`, 'create');
+                addActivity(`${importedCount} test script diimpor ke fitur "${selectedFeatureName}".`, 'create');
                 renderAll();
                 closeModal('import-modal');
                 showToast(`Impor Selesai: ${importedCount} berhasil, ${skippedCount} dilewati.`);
@@ -974,7 +950,6 @@
         };
         reader.readAsArrayBuffer(file);
     }
-
     // --- INITIALIZATION ---
     init();
 
